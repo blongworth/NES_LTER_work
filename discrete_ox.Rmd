@@ -1,0 +1,24 @@
+---
+title: "Discrete O2"
+author: "Brett Longworth"
+date: "11/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+ox <- read_csv("data/discrete_o2.csv")
+
+```
+
+```{r}
+ox %>% 
+  group_by(date) %>% 
+  summarize(across(c(temp, ox), list(mean = mean, sd = sd))) %>% 
+  knitr::kable()
+```
+

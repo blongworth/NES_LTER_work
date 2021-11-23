@@ -1,0 +1,86 @@
+---
+title: "Underway Oxygen"
+author: "Brett Longworth"
+date: "11/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(patchwork)
+library(fuzzyjoin)
+library(data.table)
+
+# Cruise data directory
+data_dir <- "/Users/brett/Documents/AR61b"
+
+# Underway data
+underway_dir <-  "data"
+```
+
+Looking at causes of supersaturation in EIMS oxygen optode. 
+
+I suspect that supersaturation in rough weather is mostly due to aeration in the sea chest, not natural aeration due to wave action. I noticed that optode saturation peaks seemed to correspond to time on station during the 2021-11-12 OOI alongshore (AS1-AS7) CTD transect.
+
+Get optode data
+
+```{r}
+optode_file <- file.path(data_dir, "20211112T000001.txt")
+
+optode <- read_table(optode_file, skip = 12, 
+                   col_names = FALSE) %>% 
+  mutate(time = as.POSIXct(paste(X1, X2), format="%Y-%m-%d %H:%M:%S")) %>% 
+  select(time, sat = X7, temp = X8, ox = X9)
+```
+
+Plot
+```{r}
+ggplot(optode) +
+  geom_line(aes(time, sat))
+```
+
+Load ship track data
+
+```{r}
+ship_file <- file.path(underway_dir, "AR211112_0000.csv")
+ship <- read_csv(ship_file, skip = 1) %>% 
+  mutate(time = as.POSIXct(paste(DATE_GMT, TIME_GMT), format="%Y-%m-%d %H:%M:%S"))
+  
+```
+
+Basic plot
+
+```{r}
+ggplot(ship) +
+  geom_point(aes(time, HDT))
+```
+
+Combined plot
+
+```{r}
+ox <- ggplot(optode, aes(time, sat)) +
+  geom_line()
+hd <- ggplot(ship, aes(time, HDT)) +
+  geom_line()
+spd <- ggplot(ship, aes(time, SPD)) +
+  geom_line()
+  
+ox / hd / spd
+```
+Join dataframes on timestamp
+
+solution from https://stackoverflow.com/questions/65858965/is-there-an-elegent-way-to-merge-two-data-frame-by-timestamp-in-r
+
+```{r}
+optode_ship <- as.data.table(ship)[optode, on = .(time), roll = TRUE]
+```
+
+```{r}
+ggplot(optode_ship, aes(WXTS_TS, sat)) +
+  geom_point()
+```
+
