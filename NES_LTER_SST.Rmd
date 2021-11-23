@@ -12,9 +12,13 @@ library(gganimate)
 library(plotdap)
 ```
 
+Search for data sources. Returns too many!
+
 ```{r}
 ed_search("SST MODIS")
 ```
+
+Check out metadata for a griddap dataset and a tabledap dataset.
 
 ```{r}
 browse("jplMURSST41")
@@ -22,11 +26,15 @@ browse('siocalcofiHydroCasts')
 info('jplMURSST41')
 ```
 
+Set a bounding box for NES LTER in time and space.
+
 ```{r}
 latitude = c(39., 42)
 longitude = c(-72., -69.)
-time = c("2021-11-05", "2021-11-15")
+time = c("2021-11-05", "2021-11-05")
 ```
+
+Grab info for MUR SST and get data for our bounding box.
 
 ```{r}
 sstInfo <- info('jplMURSST41')
@@ -35,14 +43,13 @@ murSST <- griddap(sstInfo,
                   longitude = longitude, 
                   time = time, 
                   fields = 'analysed_sst')
-
-names(murSST$data)
-unique(murSST$data$time)
 ```
 
+Map it! Use `map_data()` for a coast map and our MUR SST data for the raster. 
+Nice scales in `cmocean`. Passing `expand = FALSE` to `coord_fixed` makes 
+the raster extend to the edge of the plot.
 
 ```{r}
-
 w <- map_data("worldHires", ylim = latitude, xlim = longitude)
 ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
     geom_polygon(data = w, aes(x = long, y = lat, group = group), fill = "grey80") +
@@ -54,8 +61,9 @@ ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
     ggtitle("MUR SST",
             subtitle = time[1])
 ```
-OK, now a function to get SST for NES-LTER for a given date...
 
+OK, now a function to get SST for NES-LTER for a given date.
+Return the latest data if no date given.
 
 ```{r}
 plot_LTER_SST <- function(date = "last") {
@@ -80,11 +88,25 @@ plot_LTER_SST <- function(date = "last") {
 }
 ```
 
+Testing...
+
 ```{r}
 plot_LTER_SST("2021-11-01")
 ```
+
+Trying out the plotdap package. It's pretty much a high(er) level 
+wrapper for the stuff above. plotdap can animate plots if the
+data is a timeseries!
+
 ```{r}
-plotdap(mapTitle = "LanGd Over Grid") %>%
+  sstInfo <- info('jplMURSST41')
+  murSST <- griddap(sstInfo, 
+                    latitude = latitude, 
+                    longitude = longitude, 
+                    time = c("2021-11-01", "2021-11-16"), # get data for a range of dates
+                    fields = 'analysed_sst')
+
+plotdap(mapTitle = "MUR SST") %>%
     add_griddap(
       murSST, 
       ~analysed_sst, 
@@ -95,12 +117,9 @@ plotdap(mapTitle = "LanGd Over Grid") %>%
     print(landmask = TRUE)
 ```
 
-
-
-And now, animate across a range of dates
+And now, animate across a range of dates. This is in progress....
 
 ```{r}
-
 latitude = c(39., 42)
 longitude = c(-72., -69.)
 time = c("2021-11-05", "2021-11-06")
@@ -124,6 +143,3 @@ p <- ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
 
 p + transition_states(time)
 ```
-
-```
-
