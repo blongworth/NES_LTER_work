@@ -98,9 +98,10 @@ plot_LTER_SST("2021-11-01")
 
 Trying out the plotdap package. It's pretty much a high(er) level 
 wrapper for the stuff above. plotdap can animate plots if the
-data is a timeseries!
+data is a timeseries! Not sure how to include output in Rmd, so setting
+`eval = FALSE`.
 
-```{r}
+```{r, eval = FALSE}
   sstInfo <- info('jplMURSST41')
   murSST <- griddap(sstInfo, 
                     latitude = latitude, 
@@ -121,7 +122,7 @@ plotdap(mapTitle = "MUR SST") %>%
 
 And now, animate across a range of dates. This is in progress....
 
-```{r}
+```{r, eval = FALSE}
 latitude = c(39., 42)
 longitude = c(-72., -69.)
 time = c("2021-11-05", "2021-11-06")
