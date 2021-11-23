@@ -1,6 +1,8 @@
 ---
 title: "R ERDDAP work"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r}
@@ -18,11 +20,11 @@ Search for data sources. Returns too many!
 ed_search("SST MODIS")
 ```
 
-Check out metadata for a griddap dataset and a tabledap dataset.
+Check out metadata for a griddap dataset and a tabledap dataset. `browse()` pulls up a browser tab, so only works interactively.
 
 ```{r}
-browse("jplMURSST41")
-browse('siocalcofiHydroCasts')
+# browse("jplMURSST41")
+# browse('siocalcofiHydroCasts')
 info('jplMURSST41')
 ```
 
