@@ -1,0 +1,129 @@
+---
+title: "R ERDDAP work"
+output: html_notebook
+---
+
+```{r}
+library(rerddap)
+library(tidyverse)
+library(mapdata)
+library(cmocean)
+library(gganimate)
+library(plotdap)
+```
+
+```{r}
+ed_search("SST MODIS")
+```
+
+```{r}
+browse("jplMURSST41")
+browse('siocalcofiHydroCasts')
+info('jplMURSST41')
+```
+
+```{r}
+latitude = c(39., 42)
+longitude = c(-72., -69.)
+time = c("2021-11-05", "2021-11-15")
+```
+
+```{r}
+sstInfo <- info('jplMURSST41')
+murSST <- griddap(sstInfo, 
+                  latitude = latitude, 
+                  longitude = longitude, 
+                  time = time, 
+                  fields = 'analysed_sst')
+
+names(murSST$data)
+unique(murSST$data$time)
+```
+
+
+```{r}
+
+w <- map_data("worldHires", ylim = latitude, xlim = longitude)
+ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
+    geom_polygon(data = w, aes(x = long, y = lat, group = group), fill = "grey80") +
+    geom_raster(interpolate = FALSE) +
+    scale_fill_cmocean() +
+    # scale_fill_gradientn(colours = cmocean('thermal'), na.value = NA) +
+    theme_bw() + ylab("latitude") + xlab("longitude") +
+    coord_fixed(1.3, xlim = longitude,  ylim = latitude, expand = FALSE) +
+    ggtitle("MUR SST",
+            subtitle = time[1])
+```
+OK, now a function to get SST for NES-LTER for a given date...
+
+
+```{r}
+plot_LTER_SST <- function(date = "last") {
+  latitude = c(39., 42)
+  longitude = c(-72., -69.)
+  sstInfo <- info('jplMURSST41')
+  murSST <- griddap(sstInfo, 
+                    latitude = latitude, 
+                    longitude = longitude, 
+                    time = c(date, date), 
+                    fields = 'analysed_sst')
+  
+  w <- map_data("worldHires", ylim = latitude, xlim = longitude)
+  ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
+    geom_polygon(data = w, aes(x = long, y = lat, group = group), fill = "grey80") +
+    geom_raster(interpolate = FALSE) +
+    scale_fill_cmocean() +
+    theme_bw() + ylab("latitude") + xlab("longitude") +
+    coord_fixed(1.3, xlim = longitude,  ylim = latitude, expand = FALSE) +
+    ggtitle("MUR SST",
+            subtitle = time)
+}
+```
+
+```{r}
+plot_LTER_SST("2021-11-01")
+```
+```{r}
+plotdap(mapTitle = "LanGd Over Grid") %>%
+    add_griddap(
+      murSST, 
+      ~analysed_sst, 
+      time = identity,
+      fill = "thermal",
+      animate = TRUE
+      ) %>%
+    print(landmask = TRUE)
+```
+
+
+
+And now, animate across a range of dates
+
+```{r}
+
+latitude = c(39., 42)
+longitude = c(-72., -69.)
+time = c("2021-11-05", "2021-11-06")
+
+sstInfo <- info('jplMURSST41')
+murSST <- griddap(sstInfo, 
+                  latitude = latitude, 
+                  longitude = longitude, 
+                  time = time, 
+                  fields = 'analysed_sst')
+
+w <- map_data("worldHires", ylim = latitude, xlim = longitude)
+p <- ggplot(data = murSST$data, aes(x = lon, y = lat, fill = analysed_sst)) +
+    geom_polygon(data = w, aes(x = long, y = lat, group = group), fill = "grey80") +
+    geom_raster(interpolate = FALSE) +
+    scale_fill_cmocean() +
+    theme_bw() + ylab("latitude") + xlab("longitude") +
+    coord_fixed(1.3, xlim = longitude,  ylim = latitude, expand = FALSE) +
+    ggtitle("MUR SST",
+            subtitle = time[1])
+
+p + transition_states(time)
+```
+
+```
+
