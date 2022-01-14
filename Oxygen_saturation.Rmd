@@ -10,10 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-library(tidyverse)
-library(patchwork)
-library(fuzzyjoin)
 library(data.table)
+#library(tidymodels)
+library(corrr)
+library(ggplot2)
+library(patchwork)
 
 # Cruise data directory
 data_dir <- "/Users/brett/Documents/AR61b"
@@ -26,61 +27,117 @@ Looking at causes of supersaturation in EIMS oxygen optode.
 
 I suspect that supersaturation in rough weather is mostly due to aeration in the sea chest, not natural aeration due to wave action. I noticed that optode saturation peaks seemed to correspond to time on station during the 2021-11-12 OOI alongshore (AS1-AS7) CTD transect.
 
-Get optode data
+
+Get optode and ship data
 
 ```{r}
 optode_file <- file.path(data_dir, "20211112T000001.txt")
-
-optode <- read_table(optode_file, skip = 12, 
-                   col_names = FALSE) %>% 
-  mutate(time = as.POSIXct(paste(X1, X2), format="%Y-%m-%d %H:%M:%S")) %>% 
-  select(time, sat = X7, temp = X8, ox = X9)
-```
-
-Plot
-```{r}
-ggplot(optode) +
-  geom_line(aes(time, sat))
-```
-
-Load ship track data
-
-```{r}
 ship_file <- file.path(underway_dir, "AR211112_0000.csv")
-ship <- read_csv(ship_file, skip = 1) %>% 
-  mutate(time = as.POSIXct(paste(DATE_GMT, TIME_GMT), format="%Y-%m-%d %H:%M:%S"))
+
+optode <- read.table(optode_file, skip = 12, 
+                   header = FALSE) |>
+  data.table()
+optode[, time := as.POSIXct(paste(V1, V2),  tz = "GMT")]
+optode <- optode[, .(time, sat = V7, temp = V8, ox = V9)]
+
+ship <- fread(ship_file, skip = 1)
+ship[, time := as.POSIXct(paste(DATE_GMT, TIME_GMT), 
+                          format="%Y/%m/%d %H:%M:%S", tz = "GMT")]
   
 ```
 
-Basic plot
-
-```{r}
-ggplot(ship) +
-  geom_point(aes(time, HDT))
-```
-
-Combined plot
-
-```{r}
-ox <- ggplot(optode, aes(time, sat)) +
-  geom_line()
-hd <- ggplot(ship, aes(time, HDT)) +
-  geom_line()
-spd <- ggplot(ship, aes(time, SPD)) +
-  geom_line()
-  
-ox / hd / spd
-```
 Join dataframes on timestamp
 
 solution from https://stackoverflow.com/questions/65858965/is-there-an-elegent-way-to-merge-two-data-frame-by-timestamp-in-r
 
 ```{r}
-optode_ship <- as.data.table(ship)[optode, on = .(time), roll = TRUE]
+optode_ship <- optode[ship, on = .(time), roll = TRUE]
+```
+
+Trim dataset to likely predictors
+
+```{r}
+ox_ship_trim <- optode_ship[, .(time, sat, shipsal = SBE45S,
+                                shiptemp = SBE48T, FLR, FLOW, 
+                                SPD, HDT, COG, SOG, 
+                                air_press = WXTP_Pa,
+                                rel_wind_dir = WXTP_Dm,
+                                rel_wind_spd = WXTP_Sm, 
+                                true_wind_spd =WXTP_TS,
+                                true_wind_dir = WXTP_TD)]
+```
+
+Plot correlates
+
+```{r}
+options(digits = 1, scipen = 9999)
+print(correlate(ox_ship_trim[, .SD, .SDcols = is.numeric]))
+```
+
+
+```{r}
+plot(ox_ship_trim[, .SD, .SDcols = is.numeric])
+```
+
+
+Plot some potentially interesting variables vs time
+
+There's some interesting stuff here. There may be a lag relationship in the seawater feed to changes in speed and heading. Also, saturation drops when the underway flow drops. I may have recirculated beaker water during these times to keep air out of the filter. Need to check notes.
+
+```{r, fig.height=9}
+ox <- ggplot(optode_ship, aes(time, sat)) +
+  geom_line()
+hd <- ggplot(optode_ship, aes(time, HDT)) +
+  geom_line()
+spd <- ggplot(optode_ship, aes(time, SPD)) +
+  geom_line()
+sog <- ggplot(optode_ship, aes(time, SOG)) +
+  geom_line()
+flow <- ggplot(optode_ship, aes(time, FLOW)) +
+  geom_line()
+  
+ox / flow / hd / spd / sog
+```
+
+Polar plot of heading vs speed with saturation as color
+
+```{r}
+ggplot(ox_ship_trim, aes(HDT, SPD, color = sat)) +
+  geom_point() +
+  coord_polar() +
+  xlim(0,360)
 ```
 
 ```{r}
-ggplot(optode_ship, aes(WXTS_TS, sat)) +
+ggplot(ox_ship_trim, aes(SPD, sat, color = true_wind_spd)) +
+  geom_point() 
+```
+
+```{r}
+ggplot(ox_ship_trim, aes(true_wind_dir, SPD, color = sat)) +
+  geom_point() +
+  coord_polar() +
+  xlim(0,360)
+```
+
+```{r}
+ggplot(ox_ship_trim, aes(HDT, SPD, color = sat)) +
+  geom_point() +
+  coord_polar() +
+  xlim(0,360)
+```
+
+```{r}
+ggplot(ox_ship_trim, aes(rel_wind_spd, SPD, color = sat)) +
   geom_point()
 ```
 
+
+Linear model with speed, heading and wind speed
+
+```{r}
+sat_fit <- lm(sat ~ rel_wind_spd * true_wind_spd * HDT * SPD + FLR, data = ox_ship_trim)
+
+summary(sat_fit)
+
+```
