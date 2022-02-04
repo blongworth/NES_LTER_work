@@ -86,17 +86,40 @@ There's some interesting stuff here. There may be a lag relationship in the seaw
 
 ```{r, fig.height=9}
 ox <- ggplot(optode_ship, aes(time, sat)) +
-  geom_line()
+  geom_line() +
+  ylab("O2 sat") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank())
 hd <- ggplot(optode_ship, aes(time, HDT)) +
-  geom_line()
+  geom_line() +
+  ylab("Heading") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank())
 spd <- ggplot(optode_ship, aes(time, SPD)) +
-  geom_line()
+  geom_line() +
+  ylab("Speed") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank())
 sog <- ggplot(optode_ship, aes(time, SOG)) +
-  geom_line()
+  geom_line() +
+  ylab("Speed") 
 flow <- ggplot(optode_ship, aes(time, FLOW)) +
-  geom_line()
+  geom_line() +
+  ylab("Underway flow") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank())
+sal <- ggplot(ox_ship_trim, aes(time, shipsal)) +
+  geom_line() +
+  ylab("Salinity") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_blank())
   
-ox / flow / hd / spd / sog
+ox / flow / sal / hd / sog
 ```
 
 Polar plot of heading vs speed with saturation as color
@@ -141,3 +164,16 @@ sat_fit <- lm(sat ~ rel_wind_spd * true_wind_spd * HDT * SPD + FLR, data = ox_sh
 summary(sat_fit)
 
 ```
+
+Other cruises
+
+AR38 with IMU data
+
+```{r}
+ar38imu <- read_csv("https://dlacruisedata.whoi.edu/AR/cruise/AR38/underway/proc/AR_IMU10_190920_0000.csv", skip = 1)
+```
+
+```{r}
+ggplot(ar38imu, aes(PASHR_HEAVE)) + geom_histogram()
+```
+
