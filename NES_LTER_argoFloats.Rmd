@@ -1,0 +1,33 @@
+---
+title: "ARGO work"
+output: html_notebook
+---
+
+```{r}
+library(argoFloats)
+library(oce)
+library(sf)
+
+```
+
+```{r}
+indexAll <- getIndex()
+index <- subset(indexAll, 
+                rectangle = list(longitude = c(-72,-69.5), 
+                                 latitude = c(38,42)))
+profiles <- getProfiles(index)
+argos <- readProfiles(profiles)
+argosClean <- applyQC(argos)
+oldpar <- par(no.readonly=TRUE)
+par(mfrow=c(1, 2))                     # want two-panel plot
+par(mar=c(3.5, 2.0, 2.0, 2.0))         # maps do not get axis names
+par(mgp=c(2,0.7,0))                    # tighten axes
+## 6. Plot a map of profile locations.
+plot(index, which="map", bathymetry=TRUE, ylim = c(37, 42))
+
+## 7. Plot a TS diagram
+par(mar=c(3.5, 3.5, 2.0, 1.0))         # increase left margin for name
+plot(argosClean, which="TS")
+```
+
+
