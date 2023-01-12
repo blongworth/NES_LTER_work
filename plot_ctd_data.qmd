@@ -1,0 +1,156 @@
+---
+title: "CTD Data with OCE"
+format: html
+editor: source
+---
+
+```{r}
+library(tidyverse)
+library(oce)
+library(ocedata)
+library(raster)
+library(ncdf4)
+
+```
+
+```{r}
+c2 <- read.ctd("data/ar70b_002.cnv")
+
+summary(c2)
+plot(c2)
+```
+
+
+Downloaded files to data directory...
+
+```{r}
+files <- dir("data", ".cnv$", full.names = TRUE)
+
+ctds <- map(files, read.ctd)
+```
+
+Clean up and just look at downcast
+
+```{r}
+ctds_trimmed <- map(ctds, \(x) ctdDecimate(ctdTrim(x, method = "downcast"), p = 0.2))
+
+```
+
+Plot profiles
+
+```{r}
+walk(ctds, plot)
+walk(ctds_trimmed, plot)
+```
+
+Make a section of mainline stations
+
+```{r}
+section <- ctds_trimmed[c(1,2,4,5,8,9,10)] |> 
+  as.section()
+
+section
+```
+
+Basic Plot
+
+```{r}
+section |> plot()
+```
+
+Interpolated plot with bathymetry
+
+```{r}
+t <- download.topo(west = -72.5, east = -69, north = 41, south = 39.5) |> 
+  read.topo()
+
+section |> 
+  plot(which = c("map", "temperature", "salinity", "oxygen"), ztype = "image", showBottom = t, showStations = TRUE)
+```
+
+AR66b from DLA webserver
+
+```{r}
+base <- "https://dlacruisedata.whoi.edu/AR/cruise/AR66-B/ctd/process/"
+filenames <- sprintf("ar66b%03d.cnv", 1:54)
+files <- paste0(base, filenames)
+
+outfiles <- paste0("data/", filenames)
+# have to download the files first
+download.file(files, outfiles)
+
+# import the files
+ctds <- map(outfiles, read.ctd)
+```
+
+```{r}
+summary(ctds[[1]])
+```
+
+Clean up and just look at downcast
+
+```{r}
+ctds_trimmed <- map(ctds, \(x) ctdDecimate(ctdTrim(x, method = "downcast"), p = 0.2))
+```
+
+Plot profiles
+
+```{r}
+#walk(ctds, plot)
+walk(ctds_trimmed, plot)
+```
+
+## Transect out
+
+Make a section of mainline stations
+
+```{r}
+section <- ctds_trimmed[c(1:6,8)] |> 
+  as.section()
+
+section
+```
+
+Basic Plot
+
+```{r}
+section |> plot()
+```
+
+Interpolated plot with bathymetry
+
+```{r}
+t <- download.topo(west = -72.5, east = -69, north = 41, south = 39.5) |> 
+  read.topo()
+
+section |> 
+  plot(which = c("map", "temperature", "salinity", "oxygen"), ztype = "image", showBottom = t, showStations = TRUE)
+```
+
+## Transect in
+
+Make a section of mainline stations
+
+```{r}
+section <- ctds_trimmed[41:54] |> 
+  as.section()
+
+section
+```
+
+Basic Plot
+
+```{r}
+section |> plot()
+```
+
+Interpolated plot with bathymetry
+
+```{r}
+t <- download.topo(west = -72.5, east = -69, north = 41, south = 39.5) |> 
+  read.topo()
+
+section |> 
+  plot(which = c("map", "temperature", "salinity", "oxygen"), ztype = "image", showBottom = TRUE, showStations = TRUE)
+```
+
