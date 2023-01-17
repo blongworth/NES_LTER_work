@@ -1,0 +1,144 @@
+---
+title: "Endeavor mapper"
+format: html
+---
+  
+  Trying to scrape current endeavor position from
+  
+```{r}
+track_url <- 'https://marineops.gso.uri.edu/EndeavorNow/GetTrackLine'
+```
+
+and plot.
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(ggOceanMaps)
+library(rayshader)
+```
+
+```{r}
+track <- fromJSON(track_url)
+colnames(track) <- c("lat", "lon")
+track <- as.data.frame(track)
+
+extent <- c(-72, -70, 39.5, 41.75)
+```
+
+```{r}
+ggplot(track, aes(lon, lat)) + geom_path()
+```
+
+
+```{r}
+basemap(limits = extent, bathymetry = TRUE) + 
+  geom_path(data = transform_coord(track), aes(x = lon, y = lat)) 
+```
+
+Try with `marmap`
+
+```{r}
+# Load useful packages
+library(sf)
+library(marmap)
+library(tidyverse)
+library(rnaturalearth)
+library(cmocean)
+
+# Get bathymetric data
+bat <- getNOAA.bathy(extent[1], extent[2], extent[3], extent[4], res = 0.25, keep = TRUE)
+bat_xyz <- as.xyz(bat)
+
+# Import country data
+country <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Plot using ggplot and sf
+ggplot() + 
+  geom_sf(data = country) +
+  geom_tile(data = bat_xyz, aes(x = V1, y = V2, fill = V3)) +
+  geom_contour(data = bat_xyz,
+               aes(x = V1, y = V2, z = V3),
+               binwidth = 100, alpha = 0.2) +
+  geom_contour(data = bat_xyz,
+               aes(x = V1, y = V2, z = V3),
+               breaks = -200) +
+  geom_sf(data = country) +
+  geom_path(data = track, aes(lon, lat)) +
+  coord_sf(xlim = extent[1:2], 
+           ylim = extent[3:4]) +
+  scale_fill_cmocean(name = "deep", direction = -1, start = 0.1) +
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  theme_minimal()
+
+```
+
+```{r}
+# Load useful packages
+library(sf)
+library(marmap)
+library(tidyverse)
+library(rnaturalearth)
+library(cmocean)
+
+extent <- c(-72, -70, 39.5, 41.75)
+
+# Get bathymetric data
+bat <- getNOAA.bathy(extent[1], extent[2], extent[3], extent[4], res = 0.25, keep = TRUE)
+bat_xyz <- as.xyz(bat)
+
+bbreaks <- c(200, 50, 0, -25, -100, -1000)
+
+# Plot using ggplot and sf
+ggplot() + 
+  #geom_tile(data = bat_xyz, aes(x = V1, y = V2, fill = V3)) +
+   geom_raster(data=bat_xyz,
+                aes(x=V1, y=V2, fill=V3),
+                interpolate=TRUE,
+                show.legend=TRUE) +
+   geom_contour(data = bat_xyz,
+               aes(x = V1, y = V2, z = V3),
+               binwidth = 100, alpha = 0.2) +
+  geom_contour(data = bat_xyz,
+               aes(x = V1, y = V2, z = V3),
+               breaks = -200) +
+  #geom_sf(data = country) +
+  geom_path(data = track, aes(lon, lat)) +
+  coord_sf(xlim = extent[1:2], 
+           ylim = extent[3:4]) +
+  scale_fill_cmocean(name = "topo", direction = 1,
+                     trans = "pseudo_log",
+                     breaks = bbreaks,
+                     labels = bbreaks) +
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+r.plot <- ggplot() +
+    geom_raster(data=bat_xyz,
+                aes(x=V1, y=V2, fill=V3),
+                interpolate=TRUE,
+                show.legend=TRUE) +
+  geom_path(data = track, aes(lon, lat)) +
+  scale_fill_cmocean(name = "topo", direction = 1,
+                     trans = "pseudo_log",
+                     breaks = bbreaks,
+                     labels = bbreaks) +
+    coord_quickmap() +
+    theme_dark(base_size=6) +
+    theme(axis.title=element_blank(),
+          legend.direction='horizontal')
+
+# Pass ggplot2 object to rayshader function
+plot_gg(r.plot,
+        multicore=TRUE,
+        width=5,
+        height=5,
+        scale=200,
+        windowsize=c(1400,866),
+        zoom=0.55)
+```
+
